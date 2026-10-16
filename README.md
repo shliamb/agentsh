@@ -8,9 +8,6 @@
   <img src="https://img.shields.io/github/issues/shliamb/agentsh?style=flat-square" alt="Issues">
 </p>
 
-## `README.md`
-
-```markdown
 # Agent Shell
 
 A minimal, layered terminal agent. Built for personal use, opened because others might find the architecture useful.
