@@ -1,0 +1,6 @@
+litellm==1.93.0
+python-dotenv==1.1.1
+
+
+
+# uv pip install -r requirements.txt

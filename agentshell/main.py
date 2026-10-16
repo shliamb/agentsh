@@ -4,7 +4,9 @@ import sys
 from pathlib import Path
 
 from bootstrap.bootstrap import Bootstrap
-from config import VERSION
+from settings import VERSION, MAIN_TEXTS
+from utils.logger import log, setup
+from utils.common import t
 
 
 """
@@ -51,23 +53,14 @@ def main() -> int:
     if args.command == "init":
         return cmd_init(bootstrap)
 
-    if args.command == "run":
-        return cmd_run(bootstrap)
-
-
-def msg(key: str, lang: str, **kw) -> str:
-    """Заглушка i18n. Позже — словари."""
-    table = {
-        "error.project_exists": {"ru": "Ошибка: {err}", "en": "Error: {err}"},
-        "init.success": {"ru": "Проект инициализирован: {path}", "en": "Project initialized: {path}"},
-    }
-    return table[key][lang].format(**kw)
+    return cmd_run(bootstrap)
 
 
 def cmd_init(bootstrap: Bootstrap) -> int:
     """Создать скелет .agentshell/ в текущей папке."""
     # сначала найти существующий проект (если есть)
-    existing = bootstrap.find_project_root()
+    existing = bootstrap.find_project_root() or bootstrap.cwd
+    setup(project_root=existing) # инициализация log
     if existing:
         # проект уже есть — можно прочитать его язык
         bootstrap.root = existing
@@ -75,20 +68,20 @@ def cmd_init(bootstrap: Bootstrap) -> int:
     try:
         root = bootstrap.init()
     except FileExistsError as e:
-        print(msg(key="error.project_exists", lang=lang, err=e))
+        log.error(t(text=MAIN_TEXTS, lang=lang, key="error.error", e=e))
         return 1
-    print(msg(key="init.success", lang=lang,  path=f"{root / '.agentshell'}"))
+    log.info(t(text=MAIN_TEXTS, lang=lang, key="init.success", path=f"{root / '.agentshell'}"))
     return 0
 
 
 def cmd_run(bootstrap: Bootstrap) -> int:
     """Запустить агента. Пока — заглушка."""
     root = bootstrap.ensure_project()
+    setup(project_root=root) # инициализация log
     config = bootstrap.load_config()
     lang = bootstrap.resolve_lang()
-    print(f"Проект: {root}") if lang == "ru" else print(f"Project: {root}")
-    print(f"Конфиг: {config}") if lang == "ru" else print(f"Config: {config}")
-    print("Агент запущен (заглушка). Основная логика — в L2.") if lang == "ru" else print("The agent is running (placeholder). The main logic is in L2.")
+    log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start"))
+    log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
     return 0
 
 

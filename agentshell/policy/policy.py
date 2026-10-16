@@ -1,11 +1,13 @@
+from dataclasses import dataclass
+from enum import Enum
+import re
+from utils.logger import log
+
+
 """
 L4 Policy — решает, можно ли выполнять команду в терминале.
 Пока тупо: regex по строке. Позже — парсинг argv.
 """
-from dataclasses import dataclass
-from enum import Enum
-import re
-
 
 class Decision(Enum):
     ALLOW = "allow"

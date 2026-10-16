@@ -10,9 +10,3 @@ DEFAULT_MEMORY_MD = """# Индекс памяти
 Пример строки:
 - [auth system](memory/auth.md) — JWT, refresh tokens
 """
-
-DEFAULT_CONFIG = {
-    "model": "claude-sonnet-4-5",
-    "max_iterations": 50,
-    "lang": "en"
-}

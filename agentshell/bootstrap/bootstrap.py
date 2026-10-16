@@ -2,9 +2,11 @@
 import os
 import json
 from pathlib import Path
-from constants import PROJECT_DIR_NAME, GLOBAL_DIR
-from bootstrap.constants import DEFAULT_CLAUDE_MD, DEFAULT_MEMORY_MD, DEFAULT_CONFIG
+from settings import PROJECT_DIR_NAME, GLOBAL_DIR, DEFAULT_CONFIG, MAIN_TEXTS
+from bootstrap.strings import DEFAULT_CLAUDE_MD, DEFAULT_MEMORY_MD
 from typing import Optional
+from utils.logger import log
+from utils.common import t
 
 
 """
@@ -56,7 +58,9 @@ class Bootstrap:
         """
         target = self.cwd / PROJECT_DIR_NAME
         if target.exists():
-            raise FileExistsError(f"Проект уже инициализирован: {target}")
+            text_error = t(text=MAIN_TEXTS, lang=self.lang_override, key="init.project_exists", path=target)
+            log.error(text_error, console=False)
+            raise FileExistsError(text_error)
         self._create_skeleton(self.cwd)
         if self.lang_override:
             self._update_config({"lang": self.lang_override})
@@ -134,9 +138,10 @@ class Bootstrap:
                 encoding="utf-8",
             )
 
-    @staticmethod
-    def _read_json(path: Path) -> dict:
+    def _read_json(self, path: Path) -> dict:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            raise RuntimeError(f"Не могу прочитать {path}: {e}")
+            text_error = t(text=MAIN_TEXTS, lang=self.lang_override, key="error.cantread", path=path, e=e)
+            log.error(text_error, console=False)
+            raise RuntimeError(text_error)
