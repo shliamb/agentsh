@@ -5,6 +5,8 @@ VERSION = "0.1.0"
 PROJECT_DIR_NAME = ".agentshell"
 GLOBAL_DIR = Path.home() / PROJECT_DIR_NAME
 
+# Переносится по умолчанию в 
+# <project>/.agentshell/config.json
 DEFAULT_CONFIG = {
     "model": "claude-sonnet-4-5",
     "max_iterations": 50,
