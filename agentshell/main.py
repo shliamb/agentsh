@@ -7,6 +7,7 @@ from bootstrap.bootstrap import Bootstrap
 from settings import VERSION, MAIN_TEXTS
 from utils.logger import log, setup
 from utils.common import t
+from deps import is_in_venv, find_missing_deps
 
 
 """
@@ -24,9 +25,9 @@ def main() -> int:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["init", "run"],
+        choices=["init", "run", "setup-keys"],
         default="run",
-        help="command: init (create a project) or run (start the agent, default)",
+        help="command: init (create a project) | run (start the agent, default) | setup-keys",
     )
     parser.add_argument(
         "-p", "--project",
@@ -53,6 +54,9 @@ def main() -> int:
     if args.command == "init":
         return cmd_init(bootstrap)
 
+    if args.command == "setup-keys":
+        return cmd_setup_keys()
+
     return cmd_run(bootstrap)
 
 
@@ -76,6 +80,23 @@ def cmd_init(bootstrap: Bootstrap) -> int:
 
 def cmd_run(bootstrap: Bootstrap) -> int:
     """Запустить агента. Пока — заглушка."""
+    existing = bootstrap.find_project_root()
+    if existing:
+        bootstrap.root = existing
+    lang = bootstrap.resolve_lang()
+
+    if not is_in_venv():
+        print(t(text=MAIN_TEXTS, lang=lang, key="error.not_in_venv"), file=sys.stderr)
+        return 1
+
+    missing = find_missing_deps()
+    if missing:
+        print(
+            t(text=MAIN_TEXTS, lang=lang, key="error.missing_deps", mods=", ".join(missing)),
+            file=sys.stderr,
+        )
+        return 1
+
     root = bootstrap.ensure_project()
     setup(project_root=root) # инициализация log
     config = bootstrap.load_config()
@@ -83,6 +104,14 @@ def cmd_run(bootstrap: Bootstrap) -> int:
     log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start"))
     log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
     return 0
+
+
+def cmd_setup_keys() -> int:
+    """Интерактивная настройка API-ключей."""
+    from keys import run_setup_keys
+    run_setup_keys()
+    return 0
+
 
 
 if __name__ == "__main__":

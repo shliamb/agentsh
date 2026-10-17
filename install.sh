@@ -105,3 +105,9 @@ info "    cd /path/to/your/project"
 info "    agentsh init"
 info "    agentsh"
 echo
+
+
+# --- 9. API keys ---
+echo
+info "Configuring API keys..."
+"$VENV_DIR/bin/python" "$SCRIPT_DIR/agentshell/scripts/setup_keys.py" || warn "Key setup skipped. Run 'agentsh setup-keys' later."
