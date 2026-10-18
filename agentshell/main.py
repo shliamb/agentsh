@@ -120,15 +120,24 @@ def cmd_run(bootstrap: Bootstrap) -> int:
     setup(project_root=root) # инициализация log
     config = bootstrap.load_config()
     lang = bootstrap.resolve_lang()
-    log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start"))
-    log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
+    #log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start", version=VERSION))
+    #log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
 
+    # Запускаем терминал синхронно
+    from transport.terminal import TerminalTransport
+    from transport.router import Router
 
-    try:
-        asyncio.run(async_main())
-    except KeyboardInterrupt:
-        print("\nBye.")
-        os._exit(0) # Принудительный выход, чтобы не ждать зависший input()
+    router = Router()
+    # Передаем конфиг и пути, чтобы терминал мог их показать
+    terminal = TerminalTransport(
+        router=router, 
+        t_func=t, 
+        lang=lang, 
+        config=config, 
+        root_path=root
+    )
+    terminal.start()
+
     return 0
 
 
