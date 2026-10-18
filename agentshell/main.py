@@ -1,9 +1,13 @@
 #agentshell/main.py
+import asyncio
 import argparse
 import sys
+import os
 from pathlib import Path
 
 from bootstrap.bootstrap import Bootstrap
+from transport.router import Router
+from transport.terminal import TerminalTransport
 from settings import VERSION, MAIN_TEXTS
 from utils.logger import log, setup
 from utils.common import t
@@ -19,7 +23,7 @@ Agent Shell — точка входа.
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        prog="agentsh",
+        prog="agentshell",
         description="Agent Shell — a terminal AI agent",
     )
     parser.add_argument(
@@ -78,6 +82,21 @@ def cmd_init(bootstrap: Bootstrap) -> int:
     return 0
 
 
+async def async_main():
+    router = Router()
+    terminal = TerminalTransport(router)
+
+    # Запускаем Роутер в фоне
+    router_task = asyncio.create_task(router.start())
+    
+    # Запускаем Терминал (он ждет ввода)
+    await terminal.start()
+    
+    # Когда терминал закрылся (/exit), останавливаем роутер
+    router.stop()
+    await router_task
+
+
 def cmd_run(bootstrap: Bootstrap) -> int:
     """Запустить агента. Пока — заглушка."""
     existing = bootstrap.find_project_root()
@@ -103,6 +122,13 @@ def cmd_run(bootstrap: Bootstrap) -> int:
     lang = bootstrap.resolve_lang()
     log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start"))
     log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
+
+
+    try:
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        print("\nBye.")
+        os._exit(0) # Принудительный выход, чтобы не ждать зависший input()
     return 0
 
 
