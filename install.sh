@@ -50,13 +50,24 @@ if [ ! -f "$ENTRYPOINT" ]; then
 fi
 
 # --- 3. create venv ---
-if [ -d "$VENV_DIR" ]; then
+# Проверяем не просто папку, а что внутри есть рабочий питон
+if [ -f "$VENV_DIR/bin/python" ]; then
     info "Virtual environment already exists: $VENV_DIR"
 else
+    # Если папка есть, но она битая (без python) — удаляем её
+    if [ -d "$VENV_DIR" ]; then
+        warn "Found broken virtual environment. Recreating..."
+        rm -rf "$VENV_DIR"
+    fi
+    
     info "Creating virtual environment..."
     if ! python3 -m venv "$VENV_DIR" 2>/dev/null; then
+        # Если упало — подчищаем за собой мусор
+        rm -rf "$VENV_DIR"
         error "Failed to create virtual environment."
-        error "On Debian/Ubuntu: sudo apt install python3-venv"
+        error "Missing 'python3-venv' package."
+        error "On Debian/Ubuntu run: sudo apt install python3-venv"
+        error "On Fedora run: sudo dnf install python3-devel"
         exit 1
     fi
     info "Virtual environment created ✓"
@@ -88,12 +99,36 @@ EOF
     info "Wrapper created: $WRAPPER ✓"
 done
 
-# --- 7. PATH check ---
-if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
+# --- 7. PATH check & auto-add ---
+# Проверяем, есть ли уже ~/.local/bin в PATH
+if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     warn "$BIN_DIR is not in your PATH."
-    warn "Add this line to ~/.bashrc (or ~/.zshrc):"
-    warn "    export PATH=\"\$HOME/.local/bin:\$PATH\""
-    warn "Then reload: source ~/.bashrc"
+    
+    # Определяем файл конфигурации шелла
+    SHELL_RC=""
+    if [[ "$SHELL" == *"zsh"* ]]; then
+        SHELL_RC="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"bash"* ]]; then
+        SHELL_RC="$HOME/.bashrc"
+    else
+        SHELL_RC="$HOME/.profile"
+    fi
+
+    # Проверяем, нет ли уже этой строки в файле (чтобы не дублировать при повторной установке)
+    if [ -n "$SHELL_RC" ] && ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$SHELL_RC" 2>/dev/null; then
+        info "Adding ~/.local/bin to PATH in $SHELL_RC..."
+        echo "" >> "$SHELL_RC"
+        echo "# Added by Agent Shell installer" >> "$SHELL_RC"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC"
+        info "PATH updated ✓"
+    fi
+
+    # Обновляем PATH только для текущего сеанса установки, 
+    # чтобы ключи настроились без перезапуска терминала
+    export PATH="$BIN_DIR:$PATH"
+    
+    warn "IMPORTANT: To use 'agentsh' in other terminal windows,"
+    warn "please restart your terminal or run: source $SHELL_RC"
 fi
 
 # --- 8. done ---
