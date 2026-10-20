@@ -21,7 +21,7 @@ A minimal, layered terminal agent. Built for personal use, opened because others
 
 ## What it is
 
-Agent Shell (`agentsh`) is a CLI tool that runs an LLM agent inside your terminal, in your project folder, with your rules. It is not trying to compete with Claude Code or Cursor. It is a small, transparent, hackable alternative — built layer by layer, easy to understand, easy to modify.
+Agent Shell (`agentshell`) is a CLI tool that runs an LLM agent inside your terminal, in your project folder, with your rules. It is not trying to compete with Claude Code or Cursor. It is a small, transparent, hackable alternative — built layer by layer, easy to understand, easy to modify.
 
 Design principles:
 
@@ -39,16 +39,16 @@ Inspired by Claude Code's decomposition, but drastically simplified.
 
 | Layer | Responsibility | Status |
 |-------|----------------|--------|
-| L0 | Bootstrap — project detection, config, i18n, logging | ✅ done |
-| L1 | Transport — stdin/stdout (later: Telegram, web) | ⏳ planned |
-| L2 | Core Loop — context → LLM → tool calls → results | ⏳ planned |
-| L3 | Tools — `run_command`, `ask_user` (minimal set) | ⏳ planned |
-| L4 | Policy — allow/deny every tool call | ⏳ planned |
-| L5 | Secret Broker — inject secrets, never expose them | ⏳ planned |
-| L6 | Context Manager — trimming, compaction | ⏳ planned |
-| L7 | Memory — project notes in markdown, grep-searchable | ⏳ planned |
-| L8 | Model Router — cheap vs expensive per task | ⏳ planned |
-| L9 | Orchestration — sub-agents | ⏳ planned |
+| L0 | Bootstrap — project detection, config, i18n, logging |
+| L1 | Transport — stdin/stdout (later: Telegram, web) |
+| L2 | Core Loop — context → LLM → tool calls → results |
+| L3 | Tools — `run_command`, `ask_user` (minimal set) |
+| L4 | Policy — allow/deny every tool call |
+| L5 | Secret Broker — inject secrets, never expose them |
+| L6 | Context Manager — trimming, compaction |
+| L7 | Memory — project notes in markdown, grep-searchable |
+| L8 | Model Router — cheap vs expensive per task |
+| L9 | Orchestration — sub-agents |
 
 Each layer talks only to its neighbors through a defined interface. Every layer can be replaced or rewritten independently.
 
@@ -56,27 +56,12 @@ Each layer talks only to its neighbors through a defined interface. Every layer 
 
 ## Install
 
-Requirements: Python 3.10+, Linux/macOS.
 
 ```bash
-git clone https://github.com/<you>/agentsh.git
+git clone git@github.com:shliamb/agentsh.git
 cd agentsh
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+./install.sh
 ```
-
-Add the CLI wrapper:
-
-```bash
-cat > ~/.local/bin/agentsh << 'EOF'
-#!/bin/bash
-python3 /path/to/agentsh/agentshell/main.py "$@"
-EOF
-chmod +x ~/.local/bin/agentsh
-```
-
-Make sure `~/.local/bin` is in your `PATH`.
 
 ---
 
@@ -84,10 +69,10 @@ Make sure `~/.local/bin` is in your `PATH`.
 
 ```bash
 cd ~/my-project
-agentsh init            # create .agentshell/ skeleton
-agentsh                 # run the agent (placeholder for now)
-agentsh --lang ru       # override language for this run
-agentsh --version
+agentshell init            # create .agentshell/ skeleton
+agentshell run             # run the agent (placeholder for now)
+agentshell run --lang ru       # override language for this run
+agentshell --version
 ```
 
 Project files:
@@ -109,10 +94,10 @@ Global config lives in `~/.agentshell/config.json` and is merged underneath the 
 ## Roadmap
 
 - [x] Bootstrap: project detection, config, i18n, logging
-- [ ] L1 Transport: interactive CLI loop
-- [ ] L3 Tools: `run_command` with smart output trimming, `ask_user`
-- [ ] L4 Policy: regex + argv-based command filter
-- [ ] L2 Core Loop: LLM → tools → context
+- [x] L1 Transport: interactive CLI loop
+- [x] L3 Tools: `run_command` with smart output trimming, `ask_user`
+- [x] L4 Policy: regex + argv-based command filter
+- [x] L2 Core Loop: LLM → tools → context
 - [ ] L5 Secret Broker: inject credentials without exposing them
 - [ ] L6 Context Manager: hard trimmer, then smarter compaction
 - [ ] L7 Memory: markdown notes + grep
@@ -157,14 +142,3 @@ Agent Shell — минимальный слоистый терминальный
 
 Установка, использование и roadmap — см. выше.
 
-
-
-<!-- 
-Установка
-1. git clone <repo> agentsh       # Клонирование приложения
-2. cd agentsh
-3. chmod +x install.sh            # Права на исполнение
-4. ./install.sh                   # Запуск установочноо скрипта
-5. cd ~/любой/проект
-6. agentsh init
-7. agentsh run -->
