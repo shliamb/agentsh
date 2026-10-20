@@ -1,4 +1,25 @@
 # /agentshell/bootstrap/bootstrap.py
+"""
+Bootstrap — project environment and configuration setup.
+
+Why it exists:
+    Before the agent starts thinking or executing tools, it needs to know 
+    WHERE it is and HOW it should behave. Bootstrap handles the pre-flight checks.
+
+Responsibilities:
+    1. Find the project root (looks for a `.agentshell/` folder up the directory tree).
+    2. Create the project skeleton (`init`) if it doesn't exist.
+    3. Load configuration (merges global `~/.agentshell/config.json` with local project config).
+    4. Resolve the current language (CLI flag -> config -> default).
+
+Boundaries:
+    Knows NOTHING about LLMs, tools, or the Core loop. 
+    It only deals with files, paths, and JSON.
+
+Flow:
+    main() -> Bootstrap.ensure_project() -> Bootstrap.load_config() -> start agent.
+"""
+
 import os
 import json
 from pathlib import Path
@@ -7,26 +28,6 @@ from bootstrap.strings import DEFAULT_CLAUDE_MD, DEFAULT_MEMORY_MD
 from typing import Optional
 from utils.logger import log
 from utils.common import t
-
-
-"""
-Bootstrap — подготовка окружения агента.
-
-Что делает:
-  1. Находит корень проекта (папку с .agentshell/) вверх по дереву.
-  2. Если проекта нет — может создать (ensure) или создать явно (init).
-  3. Загружает конфиг: глобальный (~/.agentshell/) + проектный (.agentshell/).
-     Проектный переопределяет глобальный.
-
-Правило: Bootstrap ничего не знает про LLM, тулы, policy. Только файлы и папки.
-
-agentsh --version
-agentsh --help
-agentsh init            # создать проект
-agentsh                 # должен найти проект и напечатать конфиг
-run                     # запустить агента (пока заглушка — просто печатает «агент запущен»).
-
-"""
 
 
 class Bootstrap:

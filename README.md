@@ -10,6 +10,9 @@
 
 # Agent Shell
 
+<img src="./img/work-spase.jpg" alt="Work Spase">
+
+
 A minimal, layered terminal agent. Built for personal use, opened because others might find the architecture useful.
 
 **Status: early MVP.** Bootstrap, config, logging and i18n are working. The agent loop, tools and policy engine are in progress.

@@ -24,7 +24,6 @@ LLM_PROVIDERS = [
     {"name": "grok",      "env_var": "XAI_API_KEY",       "url": "https://console.x.ai/"},
 ]
 
-
 MAIN_TEXTS = {
     "ru": {
         "agent.start": "Добро пожаловать в Agent Shell v{version}",

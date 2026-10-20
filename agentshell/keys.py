@@ -6,7 +6,6 @@ Runs without any LLM — pure Python + getpass.
 import os
 import getpass
 import json
-# from pathlib import Path
 
 from dotenv import load_dotenv, set_key
 

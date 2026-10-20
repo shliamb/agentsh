@@ -1,9 +1,25 @@
-import sys
-import re
-import os
+"""
+Terminal — command-line interface (CLI) transport.
+
+Why it exists:
+    This is the first (and currently only) way for the user to talk to the agent.
+    It handles terminal input, prints output, and intercepts local slash-commands.
+
+Boundaries:
+    This file knows NOTHING about LLMs or the Core. It doesn't care what the agent 
+    does with the text. It just takes your input, sends it to the Router, 
+    and prints whatever the Router gives back.
+
+Flow:
+    User -> input() -> [check local commands like /exit] -> Router.process() -> print() -> User
+
+Note: 
+    Later, we will add `telegram.py` and `web.py` with the exact same interface.
+    The Core will never know the difference.
+"""
+
 import getpass
-import shutil
-from settings import VERSION, MAIN_TEXTS
+from settings import VERSION
 
 class TerminalTransport:
     def __init__(self, router, t_func, lang, config, root_path):
@@ -22,55 +38,35 @@ class TerminalTransport:
             "/clear": self.cmd_clear,
         }
 
+        self.green_bright = "\033[38;2;102;204;0m" # Яркий
+        self.green_dark = "\033[38;2;50;100;0m"  # Темный
+        self.reset = "\033[0m"
+
 
     def print_banner(self):
-        
-        CYAN = "\033[96m"
-        DIM = "\033[2m"
-        BOLD = "\033[1m"
-        RESET = "\033[0m"
-        
+        """ LOGO AGENT """        
         version = self.version
         model = self.config.get('model', 'unknown')
         user = getpass.getuser().capitalize()
-        
-        welcome_txt = self.t(text=MAIN_TEXTS, lang=self.lang, key="banner.welcome", user=user)
-        
-        title = f" 💻 Agent Shell {DIM}v{version}{RESET} "
-        title_clean = f" 💻 Agent Shell v{version} "
-        
-        # Строки контента (без ведущих пробелов, их добавит рамка)
-        lines = [
-            "",
-            f"{BOLD}{welcome_txt}{RESET}",
-            "",
-            f"{DIM}Project:{RESET} {self.root_path}",
-            f"{DIM}Model:  {RESET} {model}",
-            ""
-        ]
-        
-        clean_lines = [re.sub(r'\033\[[0-9;]*m', '', line) for line in lines]
-        max_content_len = max(len(l) for l in clean_lines)
-        
-        # +1 к длине заголовка, так как эмодзи в терминале занимает 2 символа,
-        # а len() в Python считает его за 1.
-        title_len_visual = len(title_clean) + 1 
-        
-        width = max(max_content_len + 4, title_len_visual + 4, 40)
-        
-        title_fill = width - title_len_visual - 3
-        print(f"{CYAN}╭─{title}{CYAN}{'─' * title_fill}╮{RESET}")
-        
-        for line, clean_line in zip(lines, clean_lines):
-            pad = width - len(clean_line) - 3
-            print(f"{CYAN}│{RESET} {line}{' ' * pad}{CYAN}│{RESET}")
-            
-        print(f"{CYAN}╰{'─' * (width - 2)}╯{RESET}")
+        logo = (
+            f"{self.green_bright}    ▄▀█ █▀▀ █▀▀ █▄░█ ▀█▀ █▀ █░█ █▀▀ █░░ █░░ v{version}{self.reset}\n"
+            f"{self.green_dark}  ░░█▀█ █▄█ ██▄ █░▀█ ░█░ ▄█ █▀█ ██▄ █▄▄ █▄▄░░ {self.reset}"
+        )
+        out_text = (
+            f"\n{logo}\n"
+            f"{self.green_dark}    ───────────────────────────────────────{self.reset}\n"
+            f"    {self.green_bright}Welcome back, {user}!\n"
+            f"    Project: {self.root_path}\n"
+            f"    Model: {model}{self.reset}\n"
+        )
+        print(out_text)
+
+
 
 
 
     def cmd_exit(self) -> bool:
-        print("До встречи.") if self.lang == "ru" else print("Bye.")
+        print("Bye.")
         return False
 
 
@@ -91,17 +87,17 @@ class TerminalTransport:
         
         while True:
             try:
-                text = input("\nagentshell > ")
+                text = input(f"\n{self.green_dark}You > {self.reset}")
                 # Сброс флага, если начали вводить текст
                 self.ctrl_c_pressed = False
                 
             except EOFError:
-                print("До встречи.") if self.lang == "ru" else print("Bye.")
+                print("Bye.")
                 break
                 
             except KeyboardInterrupt:
                 if self.ctrl_c_pressed:
-                    print("До встречи.") if self.lang == "ru" else print("Bye.")
+                    print("Bye.")
                     break
                 else:
                     print("\n(Press Ctrl+C again to exit, or type /exit)")

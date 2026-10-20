@@ -1,14 +1,13 @@
 #agentshell/main.py
-import asyncio
 import argparse
 import sys
-import os
 from pathlib import Path
-
 from bootstrap.bootstrap import Bootstrap
 from transport.router import Router
+from core.loop import Agent 
 from transport.terminal import TerminalTransport
 from settings import VERSION, MAIN_TEXTS
+from dotenv import load_dotenv
 from utils.logger import log, setup
 from utils.common import t
 from deps import is_in_venv, find_missing_deps
@@ -22,6 +21,7 @@ Agent Shell — точка входа.
 
 
 def main() -> int:
+    """ Главный запуск + команды и аргументы в терминале"""
     parser = argparse.ArgumentParser(
         prog="agentshell",
         description="Agent Shell — a terminal AI agent",
@@ -29,7 +29,7 @@ def main() -> int:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["init", "run", "setup-keys"],
+        choices=["init", "run", "setup-keys", "help"],
         default="run",
         help="command: init (create a project) | run (start the agent, default) | setup-keys",
     )
@@ -61,6 +61,9 @@ def main() -> int:
     if args.command == "setup-keys":
         return cmd_setup_keys()
 
+    if args.command == "help":
+        return print("instruction")
+
     return cmd_run(bootstrap)
 
 
@@ -76,29 +79,17 @@ def cmd_init(bootstrap: Bootstrap) -> int:
     try:
         root = bootstrap.init()
     except FileExistsError as e:
+        print(t(text=MAIN_TEXTS, lang=lang, key="error.error", e=e))
         log.error(t(text=MAIN_TEXTS, lang=lang, key="error.error", e=e))
         return 1
+    print(t(text=MAIN_TEXTS, lang=lang, key="init.success", path=f"{root / '.agentshell'}"))
     log.info(t(text=MAIN_TEXTS, lang=lang, key="init.success", path=f"{root / '.agentshell'}"))
     return 0
 
 
-async def async_main():
-    router = Router()
-    terminal = TerminalTransport(router)
-
-    # Запускаем Роутер в фоне
-    router_task = asyncio.create_task(router.start())
-    
-    # Запускаем Терминал (он ждет ввода)
-    await terminal.start()
-    
-    # Когда терминал закрылся (/exit), останавливаем роутер
-    router.stop()
-    await router_task
-
 
 def cmd_run(bootstrap: Bootstrap) -> int:
-    """Запустить агента. Пока — заглушка."""
+    """Запустить агента."""
     existing = bootstrap.find_project_root()
     if existing:
         bootstrap.root = existing
@@ -120,15 +111,20 @@ def cmd_run(bootstrap: Bootstrap) -> int:
     setup(project_root=root) # инициализация log
     config = bootstrap.load_config()
     lang = bootstrap.resolve_lang()
-    #log.info(t(text=MAIN_TEXTS, lang=lang, key="agent.start", version=VERSION))
-    #log.info(t(text=MAIN_TEXTS, lang=lang, key="run.info", root=root, config=config))
 
-    # Запускаем терминал синхронно
-    from transport.terminal import TerminalTransport
-    from transport.router import Router
 
-    router = Router()
-    # Передаем конфиг и пути, чтобы терминал мог их показать
+    # 1. Загружаем ключи из ~/.agentshell/.env
+    env_path = Path.home() / ".agentshell" / ".env"
+    load_dotenv(env_path)
+    
+    # 2. Инициализируем Агента (L2)
+    print("Initializing LLM core...")
+    log.info("Initializing LLM core...")
+    agent = Agent(config=config, project_root=root)
+    
+    # 3. Передаем Агента в Роутер
+    router = Router(agent=agent)
+
     terminal = TerminalTransport(
         router=router, 
         t_func=t, 
