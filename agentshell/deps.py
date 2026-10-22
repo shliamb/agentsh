@@ -1,11 +1,10 @@
-"""Pre-flight checks: virtual environment and required dependencies."""
 import re
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from settings import REQUIREMENTS_FILE
 
-
+"""Pre-flight checks: virtual environment and required dependencies."""
 
 def is_in_venv() -> bool:
     """True if Python runs inside a virtual environment."""

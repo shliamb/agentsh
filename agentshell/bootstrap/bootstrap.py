@@ -1,4 +1,11 @@
 # /agentshell/bootstrap/bootstrap.py
+import json
+from pathlib import Path
+from settings import PROJECT_DIR_NAME, GLOBAL_DIR, DEFAULT_CONFIG
+from bootstrap.strings import DEFAULT_CLAUDE_MD, DEFAULT_MEMORY_MD
+from typing import Optional
+from utils.logger import log
+
 """
 Bootstrap — project environment and configuration setup.
 
@@ -20,47 +27,34 @@ Flow:
     main() -> Bootstrap.ensure_project() -> Bootstrap.load_config() -> start agent.
 """
 
-import os
-import json
-from pathlib import Path
-from settings import PROJECT_DIR_NAME, GLOBAL_DIR, DEFAULT_CONFIG, MAIN_TEXTS
-from bootstrap.strings import DEFAULT_CLAUDE_MD, DEFAULT_MEMORY_MD
-from typing import Optional
-from utils.logger import log
-from utils.common import t
-
 
 class Bootstrap:
-    """Управляет окружением проекта: поиск, создание, загрузка конфига."""
+    """Manages the project environment: search, create, download config."""
 
     def __init__(self, cwd: Optional[Path] = None, lang_override: Optional[str]=None):
-        """
-        cwd — откуда искать проект. По умолчанию — текущая директория.
-        """
+        """ cwd — where to look for the project. By default, it is the current directory. """
         self.lang_override = lang_override
         self.cwd = (cwd or Path.cwd()).resolve()
         self.root: Optional[Path] = None
         self.config: dict = {}
 
+
     def find_project_root(self) -> Optional[Path]:
-        """
-        Идёт от cwd вверх по дереву, ищет папку .agentshell/.
-        Возвращает путь к корню проекта или None, если не нашёл.
-        """
+        """ Goes from cwd up the tree, searches for the .agentshell/ folder.
+            Returns the path to the root of the project, or None if not found."""
         for parent in [self.cwd, *self.cwd.parents]:
             if (parent / PROJECT_DIR_NAME).is_dir():
                 return parent
         return None
 
+
     def init(self) -> Path:
-        """
-        Явное создание проекта: agentsh init.
-        Если проект уже есть — ошибка (не трогаем существующее).
-        """
+        """ Explicit project creation: agentsh init.
+            If the project already exists, it's an error. (we don't touch the existing one)."""
         target = self.cwd / PROJECT_DIR_NAME
         if target.exists():
-            text_error = t(text=MAIN_TEXTS, lang=self.lang_override, key="init.project_exists", path=target)
-            log.error(text_error, console=False)
+            text_error = f"The project already exists: {target}"
+            log.error(text_error)
             raise FileExistsError(text_error)
         self._create_skeleton(self.cwd)
         if self.lang_override:
@@ -68,11 +62,10 @@ class Bootstrap:
         self.root = self.cwd
         return self.cwd
 
+
     def ensure_project(self) -> Path:
-        """
-        Мягкая проверка: найти проект или создать в текущей папке.
-        Вызывается при обычном запуске агента.
-        """
+        """ Soft check: find a project or create one in the current folder.
+            It is called during normal agent startup."""
         root = self.find_project_root()
         if root is None:
             root = self.cwd
@@ -82,7 +75,7 @@ class Bootstrap:
 
 
     def _update_config(self, updates: dict) -> None:
-        """Обновить .agentshell/config.json (мерж поверх существующего)."""
+        """ Update .agentshell/config.json (merge on top of the existing one). """
         cfg_path = self.cwd / PROJECT_DIR_NAME / "config.json"
         cfg = self._read_json(cfg_path) if cfg_path.exists() else {}
         cfg.update(updates)
@@ -93,14 +86,12 @@ class Bootstrap:
     
 
     def load_config(self) -> dict:
-        """
-        Грузит глобальный конфиг (~/.agentshell/config.json),
-        затем проектный (.agentshell/config.json) поверх.
-        Итог сохраняется в self.config и возвращается.
-        """
+        """ Loads the global config (~/.agentshell/config.json),
+            then the project (.agentshell/config.json) on top.
+            The result is saved in self.config and returned."""
         config: dict = {}
-
         global_cfg = GLOBAL_DIR / "config.json"
+
         if global_cfg.exists():
             config.update(self._read_json(global_cfg))
 
@@ -112,8 +103,9 @@ class Bootstrap:
         self.config = config
         return config
 
+
     def resolve_lang(self) -> str:
-        """Приоритет: override > config > 'en'."""
+        """ Priority: override > config > 'en'."""
         if self.lang_override:
             return self.lang_override
         cfg = self.load_config()
@@ -121,8 +113,9 @@ class Bootstrap:
             return cfg["lang"]
         return "en"
 
+
     def _create_skeleton(self, root: Path) -> None:
-        """Создаёт .agentshell/ со скелетом: CLAUDE.md, MEMORY.md, memory/, config.json."""
+        """ Creates an agentshell/ with a skeleton: CLAUDE.md , MEMORY.md , memory/, config.json."""
         d = root / PROJECT_DIR_NAME
         d.mkdir(exist_ok=True)
         (d / "memory").mkdir(exist_ok=True)
@@ -139,10 +132,11 @@ class Bootstrap:
                 encoding="utf-8",
             )
 
+
     def _read_json(self, path: Path) -> dict:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            text_error = t(text=MAIN_TEXTS, lang=self.lang_override, key="error.cantread", path=path, e=e)
-            log.error(text_error, console=False)
+            text_error = f"I can't read it: {path}: {e}"
+            log.error(text_error)
             raise RuntimeError(text_error)

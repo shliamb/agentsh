@@ -1,16 +1,16 @@
-"""
-Interactive API key setup.
-Reads providers from settings.py, asks for keys, saves to ~/.agentshell/.env.
-Runs without any LLM — pure Python + getpass.
-"""
 import os
 import getpass
 import json
 
 from dotenv import load_dotenv, set_key
-
 from settings import LLM_PROVIDERS, GLOBAL_DIR, ENV_FILE, DEFAULT_CONFIG
 
+
+"""
+Interactive API key setup.
+Reads providers from settings.py, asks for keys, saves to ~/.agentshell/.env.
+Runs without any LLM — pure Python + getpass.
+"""
 
 
 def run_setup_keys() -> None:
@@ -18,15 +18,12 @@ def run_setup_keys() -> None:
     ENV_FILE.touch(mode=0o600, exist_ok=True)
     load_dotenv(ENV_FILE, override=True)
 
-
-    # --- Создаем глобальный config.json, если его нет ---
     global_config_path = GLOBAL_DIR / "config.json"
     if not global_config_path.exists():
         global_config_path.write_text(
             json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
-
 
     print("=" * 50)
     print(" Agent Shell — API Key Setup")
@@ -53,7 +50,7 @@ def run_setup_keys() -> None:
             continue
 
         set_key(str(ENV_FILE), env_var, key)
-        os.environ[env_var] = key # обновляем текущий процесс
+        os.environ[env_var] = key
         print("  saved.\n")
         changed = True
 

@@ -10,7 +10,7 @@
 
 # Agent Shell
 
-<img src="./img/work-spase.jpg" alt="Work Spase">
+<img src="./img/work-space.png" alt="Work Spase">
 
 
 A minimal, layered terminal agent. Built for personal use, opened because others might find the architecture useful.
@@ -37,8 +37,8 @@ Design principles:
 
 Inspired by Claude Code's decomposition, but drastically simplified.
 
-| Layer | Responsibility | Status |
-|-------|----------------|--------|
+| Layer | Responsibility |
+|-------|----------------|
 | L0 | Bootstrap — project detection, config, i18n, logging |
 | L1 | Transport — stdin/stdout (later: Telegram, web) |
 | L2 | Core Loop — context → LLM → tool calls → results |

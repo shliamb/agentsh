@@ -17,12 +17,11 @@ Today:  only `terminal` is connected, so the router is a thin pass-through.
 Later:  more transports plug in without touching the core.
 """
 
-from core.loop import Agent
 
-class Router:
-    def __init__(self, agent: Agent):
-        self.agent = agent
+class TrafficRouter:
+    def __init__(self):
+        pass
 
     def process(self, text: str) -> str:
-        """Принимает текст, отдает Агенту, возвращает ответ."""
-        return self.agent.chat(text)
+        """ ... """
+        return text
