@@ -10,6 +10,7 @@ from transport.router import TrafficRouter
 from core.llm import LLM
 from transport.terminal import TerminalTransport
 from tools.toolsllm import ToolsLLM
+from transport.ui import UI
 
 from settings import VERSION
 from dotenv import load_dotenv
@@ -29,7 +30,7 @@ class AgentShellApp:
 
         self.start_time = time.time()
         self.tools_active_time = None
-        #self.ui = UI()
+        self.ui = None
         self.config = None
         self.root = None
 
@@ -190,15 +191,34 @@ class AgentShellApp:
 
         # 3. Initialize Core and Transport
         self.llm = LLM(config=self.config, root=self.root, tools=self.tools_llm)
-        self.traffic = TrafficRouter()
-        self.transport = TerminalTransport(config=self.config, root=self.root)
+        self.traffic = TrafficRouter() # пока что пусто
+        self.transport = TerminalTransport()
+        self.ui = UI(config=self.config, root=self.root)
+        self.transport.get_obj_ui(self.ui)
 
         self.main_loop_agent()
         return 0
 
 
+    def diagnostic_answer_llm(self, message, tools_calls, msg_obj):
+        ######### ДИАГНОСТИКА ############
+        # Если пришло что-то вообще без контента и без вызова тулзов, 
+        # значит API вернул какую-то дичь или ошибку.
+        if not message and not tools_calls:
+            print("\n[WARNING] API вернул ответ без текста и без вызова инструментов.")
+            print("Структура объекта message:")
+            if hasattr(msg_obj, "__dict__"):
+                print(vars(msg_obj))
+            else:
+                print(msg_obj)
+            
+            # Если это какая-то ошибка от LiteLLM, она может быть в скрытом поле
+            if hasattr(msg_obj, "provider_specific_fields"):
+                print("Provider specifics:", msg_obj.provider_specific_fields)
+
+
     def main_loop_agent(self):
-        self.transport.logo_out_term()
+        self.ui.logo_out_term()
 
         while True:
             """ Цикл ожидания ввода пользователя """
@@ -232,24 +252,12 @@ class AgentShellApp:
                 reasoning_content = getattr(msg_obj, "reasoning_content", None)
                 tools_calls = getattr(msg_obj, "tool_calls", None)
 
-                # --- ДИАГНОСТИКА ---
-                # Если пришло что-то вообще без контента и без вызова тулзов, 
-                # значит API вернул какую-то дичь или ошибку.
-                if not message and not tools_calls:
-                    print("\n[WARNING] API вернул ответ без текста и без вызова инструментов.")
-                    print("Структура объекта message:")
-                    if hasattr(msg_obj, "__dict__"):
-                        print(vars(msg_obj))
-                    else:
-                        print(msg_obj)
-                    
-                    # Если это какая-то ошибка от LiteLLM, она может быть в скрытом поле
-                    if hasattr(msg_obj, "provider_specific_fields"):
-                        print("Provider specifics:", msg_obj.provider_specific_fields)
+                ######### ДИАГНОСТИКА ВЫВОДА API LLM ############
+                # self.diagnostic_answer_llm()
+                ##################################
 
-
-                if reasoning_content: self.transport.render_reasoning(reasoning_content)
-                if message: print(message) # временно, далее будет отдельный метод вывода через роутинг трафика
+                if reasoning_content: self.ui.show_reasoning(reasoning_content)
+                if message: self.ui.show_agent(message)
                 if not tools_calls: break
 
                 """ [LAYER 3: TOOLS LLM] """
@@ -257,11 +265,11 @@ class AgentShellApp:
 
             # --- Вывод времени запроса ---
             elapsed = time.time() - request_start
-            print(f"\n⏱️  Done in {self._fmt_time(elapsed)}")
+            self.ui.show_info(f"⏱️  Done in {self._fmt_time(elapsed)}")
 
         # --- Время всей сессии ---
         total = time.time() - self.start_time
-        print(f"\nSession total: {self._fmt_time(total)}")
+        self.ui.show_info(f"\nSession total: {self._fmt_time(total)}")
 
 
 
