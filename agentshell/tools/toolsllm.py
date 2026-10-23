@@ -10,6 +10,7 @@ Boundaries:
     Knows NOTHING about LLMs or the Core loop. It just executes what it's told.
 """
 import subprocess
+from pathlib import Path
 from tools.subsystems.policy import Policy
 from utils.logger import log
 
@@ -18,8 +19,9 @@ from utils.logger import log
 class ToolsLLM:
     """ ... """
 
-    def __init__(self):
+    def __init__(self, root: Path | None = None):
         self.policy = Policy()
+        self.root = root  # commands always run in the project root
 
 
     def execute(self, command: str) -> str:
@@ -36,7 +38,7 @@ class ToolsLLM:
             return f"Error: Security policy denied execution. Reason: {result.reason}"
 
         # 2. Выполнение команды (L3)
-        log.info(f"Executing command: {command}")
+        log.info(f"Executing command (cwd={self.root}): {command}")
         try:
             # shell=True позволяет использовать пайпы (|), редиректы (>) и т.д.
             # timeout=30 защищает от вечного зависания (например, если LLM вызовет `sleep 1000`)
@@ -45,7 +47,8 @@ class ToolsLLM:
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
+                cwd=self.root,
             )
             
             # 3. Форматируем вывод для LLM

@@ -40,7 +40,7 @@ class AgentShellApp:
         )
         self.transport = None
         self.llm = None
-        self.tools_llm = ToolsLLM()
+        self.tools_llm = None  # built in cmd_run, once the project root is known
 
 
     def run(self) -> int:
@@ -195,11 +195,18 @@ class AgentShellApp:
             log.error(errtext)
             return 1
 
-        # 3. Initialize Core and Transport
-        self.llm = LLM(config=self.config, root=self.root, tools=self.tools_llm)
-        self.transport = TerminalTransport()
+        # 3. Initialize Transport (L1), Tools (L3) and Core (L2)
         self.ui = UI(config=self.config, root=self.root)
+        self.transport = TerminalTransport()
         self.transport.get_obj_ui(self.ui)
+
+        self.tools_llm = ToolsLLM(root=self.root)
+        self.llm = LLM(
+            config=self.config,
+            root=self.root,
+            tools=self.tools_llm,
+            ask=self.transport.ask,
+        )
 
         self.main_loop_agent()
         return 0
@@ -240,8 +247,13 @@ class AgentShellApp:
                 """ Рекурсия агента """
 
                 """ [LAYER 2: CORE LLM] """
-                answer_llm: dict = self.llm.chat(user_question)
+                answer_llm: dict | None = self.llm.chat(user_question)
                 user_question = None
+
+                if answer_llm is None:
+                    # The human said "no" at the iteration-budget question.
+                    self.ui.show_info("Stopped. The conversation is kept for the next turn.")
+                    break
 
                 try:
                     msg_obj = answer_llm.choices[0].message
@@ -263,7 +275,13 @@ class AgentShellApp:
                 if not tools_calls: break
 
                 """ [LAYER 3: TOOLS LLM] """
-                self.llm.send_tools(tools_calls)
+                for tool_call in tools_calls:
+                    self.ui.show_tool_start(
+                        tool_call.function.name,
+                        tool_call.function.arguments,
+                    )
+                    result = self.llm.execute_tool(tool_call)
+                    self.ui.show_tool_result(result)
 
             # --- Вывод времени запроса ---
             elapsed = time.time() - request_start

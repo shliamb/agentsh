@@ -1,4 +1,5 @@
 import getpass
+import json
 from settings import VERSION
 import os
 os.system("")  # включает ANSI-цвета в cmd/PowerShell на Windows
@@ -184,14 +185,51 @@ class UI:
         if text:
             print(f"\n{self.BOLD}AGENT:{self.RESET} {text}\n")
 
-    def show_tool_start(self, tool_name: str, args: str):
-        """Выводит начало выполнения команды."""
-        print(f"{self.YELLOW}🛠️  Running [{tool_name}]: {args}{self.RESET}")
+    @staticmethod
+    def _tool_detail(arguments) -> str:
+        """Human-readable argument line for a tool call."""
+        data = arguments
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except ValueError:
+                return str(arguments)
 
-    def show_tool_result(self, result: str):
-        """Выводит результат команды (можно обрезать, если очень длинно)."""
-        # Пока выводим как есть, позже сделаем умную обрезку
-        print(f"{self.GRAY}{result}{self.RESET}")
+        if isinstance(data, dict):
+            if "command" in data:
+                return str(data["command"])
+            return json.dumps(data, ensure_ascii=False)
+
+        return str(data)
+
+
+    def show_tool_start(self, tool_name: str, arguments) -> None:
+        """Shows what the agent is about to run, before it runs."""
+        print(f"\n{self.YELLOW}🛠️  {tool_name}{self.RESET}")
+        detail = self._tool_detail(arguments)
+        for line in detail.splitlines() or [""]:
+            print(f"{self.GRAY}   │ {line}{self.RESET}")
+
+
+    def _preview(self, text: str, max_lines: int = 24, max_chars: int = 2400) -> str:
+        """Shortens long output for the terminal only. The model still gets it all."""
+        lines = text.splitlines() or [""]
+        body = "\n".join(lines[:max_lines])
+
+        truncated = len(lines) > max_lines
+        if len(body) > max_chars:
+            body = body[:max_chars]
+            truncated = True
+
+        if truncated:
+            body += f"\n{self.DIM}   … {len(lines)} lines, {len(text)} chars total{self.RESET}"
+        return body
+
+
+    def show_tool_result(self, result: str) -> None:
+        """Shows what the command returned, bounded for the terminal."""
+        color = self.RED if result.lstrip().startswith("Error") else self.GRAY
+        print(f"{color}{self._preview(result)}{self.RESET}")
 
     def show_error(self, text: str):
         """Выводит сообщение об ошибке."""
@@ -200,6 +238,12 @@ class UI:
     def show_info(self, text: str):
         """Выводит системное сообщение."""
         print(f"{self.DIM}{text}{self.RESET}")
+
+
+    def show_question(self, text: str, options: tuple[str, ...] = ("y", "n")) -> None:
+        """A question the agent needs answered before it goes on."""
+        hint = "/".join(options)
+        print(f"\n{self.YELLOW}? {text}{self.RESET} {self.DIM}[{hint}]{self.RESET}")
 
 
 
@@ -211,8 +255,8 @@ class UI:
 
 # show_reasoning(text) — выводит мысли (тот код с │, который мы сделали).
 
-# show_tool_start(name, args) — выводит 🛠️ Executing: ls -la.
+# show_tool_start(name, args) — выводит имя инструмента и саму команду до запуска.
 
-# show_tool_result(output) — выводит результат команды.
+# show_tool_result(output) — выводит результат команды, обрезанный для терминала.
 
 # show_error(text) — выводит красную ошибку.

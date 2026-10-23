@@ -41,6 +41,17 @@ class TerminalTransport:
         return
 
 
+    def ask(self, question: str, options: tuple[str, ...] = ("y", "n")) -> str:
+        """Ask the human a short question and return the raw answer.
+
+        This is the channel L2 and L3 use; they never import the transport."""
+        self.ui.show_question(question, options)
+        try:
+            return input(f"{self.ui.BOLD}▸ {self.ui.RESET}").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return "n"
+
+
     def cmd_exit(self) -> str:
         print(f"Bye {self.user}.")
         return "!STOP"

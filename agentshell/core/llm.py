@@ -25,13 +25,18 @@ Boundaries:
 
 
 class LLM:
-    def __init__(self, config: dict, root: Path, tools):
+    def __init__(self, config: dict, root: Path, tools, ask=None):
         self.config = config
         self.project_root = root
         self.model = config.get("model")
         self.tools_llm = tools
         self.messages = []
         self.past_messages = []
+
+        # Human-in-the-loop channel (L1 injects it). L2 never imports a transport.
+        self.ask = ask
+        self.max_iterations = max(1, int(config.get("max_iterations") or 50))
+        self.iterations = 0
         
         # Описание инструментов для LLM (формат OpenAI)
         self.tools = [
@@ -96,8 +101,39 @@ class LLM:
         return
 
 
-    def chat(self, user_input: str = None) -> dict:
-        """ Обращение к модели LLM """
+    def _budget_allows_next_call(self) -> bool:
+        """Check the per-turn work budget, asking the human when it runs out.
+
+        Returns False when the human says no. With no ask channel the answer is
+        also False: an unattended loop is exactly what the budget exists to
+        prevent."""
+        if self.iterations < self.max_iterations:
+            return True
+
+        if not self.ask:
+            log.warn(f"Iteration budget exhausted ({self.max_iterations}), no ask channel")
+            return False
+
+        answer = self.ask(
+            f"{self.iterations} iterations used. Continue?",
+            ("y", "n"),
+        )
+        if str(answer).strip().lower() in ("y", "yes"):
+            self.iterations = 0
+            return True
+        return False
+
+
+    def chat(self, user_input: str = None) -> dict | None:
+        """ Обращение к модели LLM.
+
+        Returns None when the human stops the turn at the budget question."""
+        if user_input:
+            self.iterations = 0  # a new turn gets a fresh budget
+        if not self._budget_allows_next_call():
+            return None
+        self.iterations += 1
+
         self.past_messages = self.messages.copy() # Копия диалога
         if user_input: self.messages.append({"role": "user", "content": user_input})
 
@@ -118,32 +154,31 @@ class LLM:
 
 
 
-    def send_tools(self, tools_calls: list) -> None:
-        """ Обработка вызовов функций """
-        for tool_call in tools_calls:
-            if tool_call.function.name == "run_command":
-                try:
-                    args = json.loads(tool_call.function.arguments)
-                    command = args.get("command", "")
-                    
-                    # Выполняем
-                    result = self.tools_llm.execute(command)
-                    
-                except Exception as e:
-                    # Если упало, пишем ошибку в результат для LLM
-                    result = f"Error executing command: {e}"
-                    log.error(f"Tool execution error: {e}")
+    def execute_tool(self, tool_call) -> str:
+        """ Execute one tool call, append its result to the history, return the result.
 
-                # В любом случае (успех или ошибка) добавляем ответ в историю
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result
-                })
-            else:
-                # Если LLM вызвала неизвестный инструмент, тоже нужно ответить
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": f"Error: Unknown tool '{tool_call.function.name}'"
-                })
+        The caller (main) shows both the call and the result; this layer never prints."""
+        if tool_call.function.name == "run_command":
+            try:
+                args = json.loads(tool_call.function.arguments)
+                command = args.get("command", "")
+
+                # Выполняем
+                result = self.tools_llm.execute(command)
+
+            except Exception as e:
+                # Если упало, пишем ошибку в результат для LLM
+                result = f"Error executing command: {e}"
+                log.error(f"Tool execution error: {e}")
+
+        else:
+            # Если LLM вызвала неизвестный инструмент, тоже нужно ответить
+            result = f"Error: Unknown tool '{tool_call.function.name}'"
+
+        # В любом случае (успех или ошибка) добавляем ответ в историю
+        self.messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": result
+        })
+        return result

@@ -93,8 +93,9 @@ config, and then takes no part in the cycle.
    - **tool calls only** — nothing to render yet, the cycle continues.
 
    `reasoning_content` is shown as a dim block when the provider returns it.
-5. **L2** hands each tool call to **L3**. L3 classifies it, runs it, and returns a
-   `ToolResult`. L2 appends it as a tool message and goes back to step 3.
+5. **L2** hands each tool call to **L3**. L1 shows the call before it runs, L3 classifies
+   it and executes it, L1 shows the bounded result. L2 appends it as a tool message and
+   goes back to step 3.
 6. After `max_iterations` iterations **L2** asks L1 to confirm continuing. "Yes" resets
    the budget and the cycle goes on; "no" ends the turn. The conversation stays intact
    for the next one.
@@ -148,6 +149,8 @@ It knows nothing about models, tools, or the loop.
 The only place that touches a human.
 
 - Reads input, renders output, intercepts local slash commands.
+- Renders every tool call **before** it runs — name and the command itself — and the
+  result after it, bounded for the terminal so a huge build log does not flood the screen.
 - Owns the **`ask()` channel**: `ask(text, options) -> str`.
 - Knows: text, rendering, terminal state.
 - Doesn't know: models, tools, policy, messages.
@@ -377,8 +380,9 @@ honest on purpose.
 ### L1 · Transport
 
 - [x] terminal loop, local commands, `Ctrl+C` handling, rendering
+- [x] every tool call and its result shown in the terminal
 - [x] timing per request and per session
-- [ ] `ask()` channel
+- [x] `ask()` channel — used by the iteration budget
 - [ ] streaming output
 - [ ] `telegram.py` / `web.py` behind the same interface
 
@@ -386,6 +390,7 @@ honest on purpose.
 
 - [x] LiteLLM call, tool-call parsing, reasoning display
 - [x] history kept per session, error recovery
+- [x] iteration budget: asks before running away
 - [ ] context-fit hook before each call
 - [ ] token and cost accounting
 - [ ] typed errors instead of a synthetic response
@@ -394,9 +399,9 @@ honest on purpose.
 
 - [x] `run_command` with timeout and structured result
 - [x] regex policy with `ALLOW` / `DENY` / `ASK`
+- [x] `cwd` pinned to the project root
 - [ ] confirmation gate wired to `ask()`
 - [ ] tool registry inside L3 (schemas currently live in L2)
-- [ ] `cwd` pinned to the project root
 - [ ] bounded output (head + tail)
 - [ ] secret broker with placeholders and redaction
 - [ ] context manager (`fit`, `bound`)

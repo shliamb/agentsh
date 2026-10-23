@@ -23,13 +23,13 @@ class Policy:
     def __init__(self):
         # Каждое правило: (regex, причина отказа)
         self.rules = [
-            (r"\.env\b",        "доступ к .env запрещён"),
-            (r"\.ssh\b",        "доступ к .ssh запрещён"),
-            (r"\.aws\b",        "доступ к .aws запрещён"),
-            (r"\.pem\b",        "доступ к .pem запрещён"),
-            (r"id_rsa",         "доступ к ssh-ключу запрещён"),
-            (r"rm\s+-rf\s+/",   "рекурсивное удаление корня запрещено"),
-            (r"rm\s+-rf\s+~",   "рекурсивное удаление домашней папки запрещено"),
+            (r"\.env\b",        "access to .env is denied"),
+            (r"\.ssh\b",        "access to .ssh is denied"),
+            (r"\.aws\b",        "access to .aws is denied"),
+            (r"\.pem\b",        "access to .pem keys is denied"),
+            (r"id_rsa",         "access to an SSH key is denied"),
+            (r"rm\s+-rf\s+/",   "recursive delete of a root path is denied"),
+            (r"rm\s+-rf\s+~",   "recursive delete of the home directory is denied"),
         ]
 
     def check(self, command: str) -> Result:
