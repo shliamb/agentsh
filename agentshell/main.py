@@ -6,13 +6,12 @@ import getpass
 from pathlib import Path
 
 from bootstrap.bootstrap import Bootstrap
-from transport.router import TrafficRouter
 from core.llm import LLM
 from transport.terminal import TerminalTransport
 from tools.toolsllm import ToolsLLM
 from transport.ui import UI
 
-from settings import VERSION
+from settings import VERSION, PROJECT_DIR_NAME
 from dotenv import load_dotenv
 from utils.logger import log, setup
 from deps import is_in_venv, find_missing_deps
@@ -39,7 +38,6 @@ class AgentShellApp:
             cwd=self.args.project, 
             lang_override=self.args.lang
         )
-        self.traffic = None
         self.transport = None
         self.llm = None
         self.tools_llm = ToolsLLM()
@@ -118,22 +116,30 @@ class AgentShellApp:
 
 
     def cmd_init(self) -> int:
-        """Create the .agentshell/ skeleton in the current folder."""
-        existing = self.bootstrap.find_project_root() or self.bootstrap.cwd
-        setup(project_root=existing) # Одноразовый, нет смысла добавлять в self.root
+        """Create the .agentshell/ skeleton in the current folder.
 
+        The logger is configured *after* the project check on purpose: setup()
+        creates .agentshell/logs/, and that would make Bootstrap.init() think
+        the project already exists."""
+        existing = self.bootstrap.find_project_root()
         if existing:
-            self.bootstrap.root = existing
+            setup(project_root=existing)  # safe: .agentshell/ is already there
+            errtext = f"Error: the project already exists: {existing / PROJECT_DIR_NAME}"
+            print(errtext)
+            log.error(errtext)
+            return 1
 
         try:
             root = self.bootstrap.init()
         except FileExistsError as e:
+            setup(project_root=self.bootstrap.cwd)
             errtext = f"Error: {e}"
             print(errtext)
             log.error(errtext)
             return 1
-        
-        init_text = f"Project initialized: {root / '.agentshell'}"
+
+        setup(project_root=root)
+        init_text = f"Project initialized: {root / PROJECT_DIR_NAME}"
         print(init_text)
         log.info(init_text)
         return 0
@@ -191,7 +197,6 @@ class AgentShellApp:
 
         # 3. Initialize Core and Transport
         self.llm = LLM(config=self.config, root=self.root, tools=self.tools_llm)
-        self.traffic = TrafficRouter() # пока что пусто
         self.transport = TerminalTransport()
         self.ui = UI(config=self.config, root=self.root)
         self.transport.get_obj_ui(self.ui)
@@ -229,9 +234,6 @@ class AgentShellApp:
             if not user_question: continue
             if user_question == "!STOP": break
 
-            """ [LAYER 1: ROUTER] """
-            # Отдельные методы для ввода/вывода в процессе (web, terminal, bot) позже..
-            self.traffic.process(user_question)
             request_start = time.time()
 
             while True:

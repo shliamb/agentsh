@@ -10,7 +10,7 @@ Boundaries:
     Knows NOTHING about LLMs or the Core loop. It just executes what it's told.
 """
 import subprocess
-from policy.policy import Policy
+from tools.subsystems.policy import Policy
 from utils.logger import log
 
 

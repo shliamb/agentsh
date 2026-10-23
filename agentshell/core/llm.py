@@ -18,7 +18,7 @@ Responsibilities:
     4. If it's a final text answer, return it.
 
 Boundaries:
-    Knows NOTHING about the Terminal, Router, or how the text is displayed.
+    Knows NOTHING about the Terminal, the transport, or how the text is displayed.
     It just takes a `str`, does the hard work, and returns a `str`.
 """
 

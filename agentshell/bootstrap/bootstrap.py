@@ -41,8 +41,13 @@ class Bootstrap:
 
     def find_project_root(self) -> Optional[Path]:
         """ Goes from cwd up the tree, searches for the .agentshell/ folder.
-            Returns the path to the root of the project, or None if not found."""
+            Returns the path to the root of the project, or None if not found.
+
+            ~/.agentshell is the global config directory, not a project, so the
+            home directory is never reported as a project root."""
         for parent in [self.cwd, *self.cwd.parents]:
+            if parent / PROJECT_DIR_NAME == GLOBAL_DIR:
+                continue  # this is the global config, not a project marker
             if (parent / PROJECT_DIR_NAME).is_dir():
                 return parent
         return None

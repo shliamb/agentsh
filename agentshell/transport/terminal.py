@@ -10,11 +10,11 @@ Why it exists:
 
 Boundaries:
     This file knows NOTHING about LLMs or the Core. It doesn't care what the agent 
-    does with the text. It just takes your input, sends it to the Router, 
-    and prints whatever the Router gives back.
+    does with the text. It just takes your input, hands it to the core, 
+    and prints whatever comes back.
 
 Flow:
-    User -> input() -> [check local commands like /exit] -> Router.process() -> print() -> User
+    User -> input() -> [check local commands like /exit] -> Core -> print() -> User
 
 Note: 
     Later, we will add `telegram.py` and `web.py` with the exact same interface.
