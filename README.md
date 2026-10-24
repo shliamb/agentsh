@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/status-early%20MVP-orange?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/status-frozen-lightgrey?style=flat-square" alt="Status">
   <img src="https://img.shields.io/badge/LiteLLM-multi--provider-1F6FEB?style=flat-square" alt="LiteLLM">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
 </p>
@@ -17,12 +17,27 @@ The model decides *what* to do. The code decides *what is allowed*. Everything e
 plumbing, and there is very little of it: the whole thing is small enough to read in an
 evening and change without archaeology.
 
+> **Status: frozen (October 2026).**
+>
+> The core is written and the loop works end to end: bootstrap, transport, model calls,
+> tools, policy, command output in the terminal, confirmation before long loops. It is
+> also rough and unguarded — commands run without asking first, output is bounded only on
+> screen, and there is no secret broker or context manager.
+>
+> Development stopped because it does not earn its keep: the remaining work is large, and
+> the result would still be a less capable version of agents that already exist. The code
+> stays published because a working agent in ~1.5k readable lines is useful as a
+> reference.
+>
+> Treat it as a prototype. Do not run it in a repository you do not trust.
+
 ## What it is
 
 Agent Shell is a CLI that runs an LLM agent inside your terminal, in your project folder,
 under your rules. You type a request. The model answers, and may ask to run a shell
-command. The command passes a policy gate, runs with a timeout and a bounded output, and
-the result goes back to the model. This repeats until the model answers with plain text.
+command. The command is checked against a small policy, runs in the project root with a
+timeout, and the result goes back to the model. This repeats until the model answers with
+plain text.
 
 Practical consequences:
 
@@ -33,6 +48,7 @@ Practical consequences:
 ## What it is not
 
 - **Not a Claude Code competitor.** Different goal, different scale.
+- **Not maintained.** Frozen as of October 2026; see [Status & roadmap](#status--roadmap).
 - **Not production-grade.** Single user, single process, no telemetry to reconcile.
 - **Not a sandbox.** The policy gate reduces accidents; it does not contain a determined
   model. See [Security model](#security-model).
@@ -46,7 +62,7 @@ Practical consequences:
    Every call is classified before it runs.
 3. **Local-first.** A Python process, a `.agentshell/` folder, a log file. That's the
    entire runtime.
-4. **Transparent.** You see the command before it runs, and you can say no.
+4. **Transparent.** You see every command the agent wants to run, before it runs.
 5. **Provider-agnostic.** Cheap models by default, expensive ones when a task earns them.
 6. **Hackable.** One concern per module, explicit names, no framework, no magic.
 
@@ -348,27 +364,50 @@ as the matching key is present.
 
 ## Security model
 
-Being precise about this matters more than the feature list.
+Being precise about this matters more than the feature list — especially because the
+project is frozen in a state where most of the controls described elsewhere do not exist
+yet.
+
+**What is true today**
 
 - **The agent runs shell commands.** Anything the model can be argued into running, it
   will run, with your permissions.
-- **Policy is a gate, not a sandbox.** It catches accidents. It does not stop an
-  attacker who controls the text the model reads.
+- **There is no confirmation prompt.** A command is executed as soon as the model asks,
+  unless one of the seven regex rules in `policy.py` matches: `rm -rf /`, `rm -rf ~`,
+  `.env`, `.ssh`, `.aws`, `.pem`, `id_rsa`. That list guards against accidents, not
+  attackers — it is bypassed by `$HOME`, `sh -c`, or `curl … | sh`.
+- **`~/.agentshell/.env` is loaded into the process.** Any command can print it with
+  `env`. There is no secret broker and no output redaction.
 - **The project is input.** Files in the repository — READMEs, issues, commit messages,
   test fixtures — can carry instructions. A repository you did not write is untrusted
   input, exactly like a web page.
-- **Confirmation is the real control.** Every command that is not known to be safe is
-  meant to wait for your yes.
-- **Secrets never enter the prompt.** The broker injects values into the environment and
-  redacts them from output.
 
-Practical advice: run it in a project you own. Keep `~/.agentshell/.env` as the only
-place with credentials. Read the commands before you approve them.
+Practical advice: run it only in a project you own, on a machine where you can afford a
+mistake. Use a dedicated API key with a spending limit, and revoke it when you are done.
+
+The design called for more than this — a confirmation gate on every non-trivial call, a
+broker that substitutes secrets at launch and redacts them from output, and a policy that
+defaults to asking. Those are on the roadmap and not implemented.
 
 ## Status & roadmap
 
-Early MVP. The skeleton is real; several guards are not built yet. This section is kept
-honest on purpose.
+**Frozen.** The core is complete and the loop works; no further development is planned.
+The checklists below are a record of what is done and what was left, so that anyone
+picking the project up knows where the edges are.
+
+Nothing here is half-written code: what is marked `[x]` works and was tested by hand;
+what is marked `[ ]` was designed but never written.
+
+### Why it is frozen
+
+It runs, and it is honest about what it does. But it does not solve a problem better than
+the agents that already exist — they are faster, safer, and have a team behind them. The
+distance between "works on my machine" and "safe to point at a real repository" is a
+confirmation gate, a sandbox, context compaction and a memory model: a product-sized
+effort, not a weekend one. Freezing it was cheaper than pretending otherwise.
+
+If someone wants to continue, start with the confirmation gate wired to `ask()` — it is
+the difference between a demo that runs your shell and a tool you can leave running.
 
 ### L0 · Bootstrap
 
